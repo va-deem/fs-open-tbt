@@ -6,16 +6,8 @@ const totalLikes = (blogs) => blogs.reduce((acc, value) => acc + value.likes, 0)
 
 const favoriteBlog = (blogs) => blogs.reduce((acc, value) => {
   if (value.likes >= acc.likes) {
-    const {
-      title,
-      author,
-      likes,
-    } = value;
-    acc = {
-      title,
-      author,
-      likes,
-    };
+    const { title, author, likes } = value;
+    acc = { title, author, likes };
   }
   return acc;
 }, { likes: 0 });

@@ -8,6 +8,10 @@ const blogSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
 });
 
 /* eslint-disable no-param-reassign, no-underscore-dangle */

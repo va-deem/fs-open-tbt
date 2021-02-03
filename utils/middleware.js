@@ -1,4 +1,5 @@
 const morgan = require('morgan');
+const logger = require('./logger');
 
 morgan.token('body', (req) => JSON.stringify(req.body));
 
@@ -19,7 +20,27 @@ const errorHandler = (err, req, res, next) => {
     return res.status(400).json({ error: err.message });
   }
 
+  if (err.name === 'JsonWebTokenError') {
+    return res.status(401).json({ error: 'invalid token' });
+  }
+
+  logger.error(err.message);
+
   next(err);
 };
 
-module.exports = { requestLogger, unknownEndpoint, errorHandler };
+const tokenExtractor = (req, res, next) => {
+  const authorization = req.get('authorization');
+  if (authorization && authorization.toLowerCase()
+    .startsWith('bearer ')) {
+    req.token = authorization.substring(7);
+  } else {
+    req.token = null;
+  }
+
+  next();
+};
+
+module.exports = {
+  requestLogger, unknownEndpoint, errorHandler, tokenExtractor,
+};

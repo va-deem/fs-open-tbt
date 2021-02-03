@@ -1,16 +1,41 @@
 const mongoose = require('mongoose');
 const supertest = require('supertest');
+const bcrypt = require('bcrypt');
 const app = require('../app');
 
 const api = supertest(app);
 const Blog = require('../models/blog');
+const User = require('../models/user');
 const helper = require('./test_helper');
+
+let token;
+let userId;
+
+beforeAll(async () => {
+  await User.deleteMany({});
+
+  const passwordHash = await bcrypt.hash('somePass', 10);
+  const user = new User({
+    username: 'user1',
+    passwordHash,
+  });
+
+  const newUser = await user.save();
+  userId = newUser._id;
+
+  const response = await api
+    .post('/api/login')
+    .send({ username: 'user1', password: 'somePass' })
+    .expect(200);
+
+  token = response.body.token;
+});
 
 beforeEach(async () => {
   await Blog.deleteMany({});
 
   const blogObjects = helper.initialBlogs
-    .map((blog) => new Blog(blog));
+    .map((blog) => new Blog({ ...blog, user: userId }));
   const promiseArray = blogObjects.map((blog) => blog.save());
   await Promise.all(promiseArray);
 });
@@ -44,6 +69,7 @@ describe('addition of a new blog', () => {
 
     await api
       .post('/api/blogs')
+      .set('Authorization', `bearer ${token}`)
       .send(newBlog)
       .expect(200)
       .expect('Content-Type', /application\/json/);
@@ -67,6 +93,7 @@ describe('addition of a new blog', () => {
 
     await api
       .post('/api/blogs')
+      .set('Authorization', `bearer ${token}`)
       .send(newBlog);
 
     const response = await api.get('/api/blogs');
@@ -83,6 +110,7 @@ describe('addition of a new blog', () => {
 
     await api
       .post('/api/blogs')
+      .set('Authorization', `bearer ${token}`)
       .send(newBlog)
       .expect(400);
 
@@ -90,6 +118,20 @@ describe('addition of a new blog', () => {
 
     expect(blogs)
       .toHaveLength(helper.initialBlogs.length);
+  });
+
+  test('should return 401 if token is not provided', async () => {
+    const newBlog = {
+      title: 'Mock blog post',
+      author: 'John Doe',
+      url: 'https://jestjs.io/',
+      likes: 0,
+    };
+
+    await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .expect(401);
   });
 });
 
@@ -100,6 +142,7 @@ describe('deletion of a blog', () => {
 
     await api
       .delete(`/api/blogs/${blogToDelete.id}`)
+      .set('Authorization', `bearer ${token}`)
       .expect(204);
 
     const blogsAtEnd = await helper.blogsInDb();
@@ -147,13 +190,13 @@ describe('viewing a specific blog', () => {
       .expect(200)
       .expect('Content-Type', /application\/json/);
 
-    expect(blog.body).toEqual(blogToView);
+    const processedBlogToView = JSON.parse(JSON.stringify(blogToView));
+
+    expect(blog.body).toEqual(processedBlogToView);
   });
 
   test('fails with statuscode 404 if blog does not exist', async () => {
     const validNonexistingId = await helper.nonExistingId();
-
-    console.log(validNonexistingId);
 
     await api
       .get(`/api/blogs/${validNonexistingId}`)

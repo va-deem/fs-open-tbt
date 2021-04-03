@@ -12,6 +12,7 @@ const blogSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   },
+  comments: mongoose.Schema.Types.Array,
 });
 
 /* eslint-disable no-param-reassign, no-underscore-dangle */

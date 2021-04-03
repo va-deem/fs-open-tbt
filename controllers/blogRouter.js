@@ -28,6 +28,24 @@ blogRouter.post('/', async (req, res) => {
   res.json(savedBlog);
 });
 
+blogRouter.post('/:id/comments', async (req, res) => {
+  const { id } = req.params;
+
+  if (!req.body.comment) {
+    return res.status(400).end();
+  }
+
+  console.log('ID', id);
+  const updatedBlog = await Blog.findOneAndUpdate(
+    { _id: id },
+    { $addToSet: { comments: req.body.comment } },
+    { new: true },
+  );
+  console.log('UPD', updatedBlog);
+
+  res.json(updatedBlog);
+});
+
 blogRouter.get('/:id', async (req, res) => {
   const { id } = req.params;
 
